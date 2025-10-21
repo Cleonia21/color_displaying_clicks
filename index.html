@@ -35,6 +35,9 @@
         body {
             background-color: #6f6f6f;
             display: table;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
         }
 
         p {
@@ -43,7 +46,7 @@
 
         .TestParent {
             width: 100%;
-            height: 100%;
+            height: calc(100vh - 60px);
             position: fixed;
             top: 0;
             left: 0;
@@ -90,7 +93,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0
+            margin: 0;
+            background: #6f6f6f;
         }
 
         /* Стили для истории клавиш */
@@ -99,30 +103,64 @@
             bottom: 0;
             left: 0;
             width: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.9);
             color: white;
             padding: 10px;
-            font-family: monospace;
+            font-family: 'Courier New', monospace;
             font-size: 16px;
             text-align: center;
-            min-height: 30px;
+            min-height: 40px;
             z-index: 1000;
             border-top: 2px solid #e2e2e2;
+            box-sizing: border-box;
         }
 
-        .key-history span {
-            margin: 0 5px;
+        .key-history-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 5px;
+            max-width: 100%;
+        }
+
+        .key-item {
+            padding: 4px 8px;
+            background: linear-gradient(135deg, #555, #333);
+            border: 1px solid #666;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            min-width: 30px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .key-item.special {
+            background: linear-gradient(135deg, #777, #555);
+        }
+
+        .key-item.modifier {
+            background: linear-gradient(135deg, #888, #666);
+        }
+
+        .key-item.arrow {
+            background: linear-gradient(135deg, #995500, #774400);
+        }
+
+        .key-item.function {
+            background: linear-gradient(135deg, #008855, #006644);
+        }
+
+        .history-title {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            color: #ccc;
+            background: rgba(0,0,0,0.5);
             padding: 2px 8px;
-            background-color: #444;
             border-radius: 4px;
-        }
-
-        .key-history .arrow-left {
-            color: #ff0000;
-        }
-
-        .key-history .arrow-right {
-            color: yellow;
         }
 
         @media (max-width:768px) {
@@ -136,6 +174,17 @@
             .key-history {
                 font-size: 14px;
                 padding: 8px;
+                min-height: 35px;
+            }
+            
+            .key-item {
+                padding: 3px 6px;
+                font-size: 12px;
+                min-width: 25px;
+            }
+            
+            .TestParent {
+                height: calc(100vh - 45px);
             }
         }
 
@@ -150,80 +199,164 @@
             .key-history {
                 font-size: 12px;
                 padding: 5px;
+                min-height: 30px;
+            }
+            
+            .key-item {
+                padding: 2px 4px;
+                font-size: 10px;
+                min-width: 20px;
+            }
+            
+            .history-title {
+                font-size: 10px;
+                left: 5px;
+            }
+            
+            .TestParent {
+                height: calc(100vh - 35px);
             }
         }
     </style>
 </head>
 <body>
 <div id="container">
-    <header>
-
-    </header>
+    <header></header>
     <div id="parent" class="TestParent" oncontextmenu="return false;">
         <div id="circle"></div>
     </div>
     
     <!-- Строка с историей клавиш -->
-    <div id="keyHistory" class="key-history"></div>
+    <div id="keyHistory" class="key-history">
+        <div class="history-title">История клавиш:</div>
+        <div class="key-history-container" id="keyHistoryContainer"></div>
+    </div>
 </div>
 
 <script>
+    const circle = document.getElementById('circle');
+    const keyHistoryContainer = document.getElementById('keyHistoryContainer');
+    let keySequence = [];
+    const maxHistoryItems = 15; // Максимальное количество отображаемых клавиш
+
+    // Функция для преобразования кодов клавиш в читаемые названия
+    function getKeyDisplayName(code) {
+        const keyMap = {
+            // Буквы
+            'KeyA': 'A', 'KeyB': 'B', 'KeyC': 'C', 'KeyD': 'D', 'KeyE': 'E',
+            'KeyF': 'F', 'KeyG': 'G', 'KeyH': 'H', 'KeyI': 'I', 'KeyJ': 'J',
+            'KeyK': 'K', 'KeyL': 'L', 'KeyM': 'M', 'KeyN': 'N', 'KeyO': 'O',
+            'KeyP': 'P', 'KeyQ': 'Q', 'KeyR': 'R', 'KeyS': 'S', 'KeyT': 'T',
+            'KeyU': 'U', 'KeyV': 'V', 'KeyW': 'W', 'KeyX': 'X', 'KeyY': 'Y',
+            'KeyZ': 'Z',
+            
+            // Цифры
+            'Digit0': '0', 'Digit1': '1', 'Digit2': '2', 'Digit3': '3', 'Digit4': '4',
+            'Digit5': '5', 'Digit6': '6', 'Digit7': '7', 'Digit8': '8', 'Digit9': '9',
+            
+            // Специальные клавиши
+            'Space': 'Space', 'Enter': 'Enter', 'Tab': 'Tab', 'Backspace': 'Backspace',
+            'Delete': 'Delete', 'Escape': 'Esc', 'CapsLock': 'Caps',
+            
+            // Стрелки
+            'ArrowUp': '↑', 'ArrowDown': '↓', 'ArrowLeft': '←', 'ArrowRight': '→',
+            
+            // Функциональные клавиши
+            'F1': 'F1', 'F2': 'F2', 'F3': 'F3', 'F4': 'F4', 'F5': 'F5',
+            'F6': 'F6', 'F7': 'F7', 'F8': 'F8', 'F9': 'F9', 'F10': 'F10',
+            'F11': 'F11', 'F12': 'F12',
+            
+            // Модификаторы
+            'ShiftLeft': 'Shift', 'ShiftRight': 'Shift', 'ControlLeft': 'Ctrl',
+            'ControlRight': 'Ctrl', 'AltLeft': 'Alt', 'AltRight': 'Alt',
+            'MetaLeft': 'Meta', 'MetaRight': 'Meta',
+            
+            // Символы
+            'Comma': ',', 'Period': '.', 'Semicolon': ';', 'Quote': "'",
+            'BracketLeft': '[', 'BracketRight': ']', 'Backslash': '\\',
+            'Slash': '/', 'Backquote': '`', 'Minus': '-', 'Equal': '='
+        };
+        
+        return keyMap[code] || code.replace(/^(Key|Digit)/, '');
+    }
+
+    // Функция для определения класса клавиши
+    function getKeyClass(code) {
+        if (code.includes('Arrow')) return 'arrow';
+        if (code.includes('Shift') || code.includes('Control') || code.includes('Alt') || code.includes('Meta')) return 'modifier';
+        if (code.startsWith('F') && code.length <= 3) return 'function';
+        if (['Space', 'Enter', 'Tab', 'Backspace', 'Delete', 'Escape', 'CapsLock'].includes(code)) return 'special';
+        return '';
+    }
+
+    addEventListener('keydown', function(event) {
+        // Предотвращаем стандартное поведение для некоторых клавиш
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+            event.preventDefault();
+        }
+
+        // Обработка стрелок для круга
+        if (event.code === 'ArrowLeft') {
+            circle.style.background = '#ff0000';
+        } else if (event.code === 'ArrowRight') {
+            circle.style.background = 'yellow';
+        }
+        
+        // Добавляем клавишу в историю
+        addKeyToHistory(event.code);
+    });
+
+    addEventListener('keyup', function(event) {
+        if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
+            circle.style.background = '#6f6f6f';
+        }
+    });
     
-        const circle = document.getElementById('circle');
-        const keyHistory = document.getElementById('keyHistory');
-        let keySequence = [];
-        const maxHistoryItems = 10; // Максимальное количество отображаемых клавиш
-
-        addEventListener('keydown', function(event) {
-            if (event.code === 'ArrowLeft') {
-                circle.style.background = '#ff0000';
-                addKeyToHistory('←', 'arrow-left');
-            } else if (event.code === 'ArrowRight') {
-                circle.style.background = 'yellow';
-                addKeyToHistory('→', 'arrow-right');
-            }
-        });
-
-        addEventListener('keyup', function(event) {
-            if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
-                circle.style.background = '#6f6f6f';
-            }
+    function addKeyToHistory(keyCode) {
+        const keyDisplayName = getKeyDisplayName(keyCode);
+        const keyClass = getKeyClass(keyCode);
+        
+        // Добавляем новую клавишу в массив
+        keySequence.push({ 
+            symbol: keyDisplayName, 
+            class: keyClass,
+            code: keyCode
         });
         
-        function addKeyToHistory(keySymbol, className) {
-            // Добавляем новую клавишу в массив
-            keySequence.push({ symbol: keySymbol, class: className });
-            
-            // Ограничиваем длину истории
-            if (keySequence.length > maxHistoryItems) {
-                keySequence.shift(); // Удаляем самый старый элемент
-            }
-            
-            // Обновляем отображение
-            updateKeyHistoryDisplay();
+        // Ограничиваем длину истории
+        if (keySequence.length > maxHistoryItems) {
+            keySequence.shift(); // Удаляем самый старый элемент
         }
         
-        function updateKeyHistoryDisplay() {
-            // Очищаем контейнер
-            keyHistory.innerHTML = '';
-            
-            // Добавляем все клавиши из истории
-            keySequence.forEach(key => {
-                const keyElement = document.createElement('span');
-                keyElement.textContent = key.symbol;
-                keyElement.className = key.class;
-                keyHistory.appendChild(keyElement);
-            });
-            
-            // Если история пуста, показываем сообщение
-            if (keySequence.length === 0) {
-                keyHistory.textContent = 'Нажмите стрелки ← или →';
-            }
-        }
-        
-        // Инициализируем отображение
+        // Обновляем отображение
         updateKeyHistoryDisplay();
- 
+    }
+    
+    function updateKeyHistoryDisplay() {
+        // Очищаем контейнер
+        keyHistoryContainer.innerHTML = '';
+        
+        // Добавляем все клавиши из истории
+        keySequence.forEach(key => {
+            const keyElement = document.createElement('div');
+            keyElement.textContent = key.symbol;
+            keyElement.className = `key-item ${key.class}`;
+            keyElement.title = key.code; // Показываем полный код при наведении
+            keyHistoryContainer.appendChild(keyElement);
+        });
+        
+        // Если история пуста, показываем сообщение
+        if (keySequence.length === 0) {
+            const placeholder = document.createElement('div');
+            placeholder.textContent = 'Нажмите любую клавишу...';
+            placeholder.style.color = '#888';
+            placeholder.style.fontStyle = 'italic';
+            keyHistoryContainer.appendChild(placeholder);
+        }
+    }
+    
+    // Инициализируем отображение
+    updateKeyHistoryDisplay();
 </script>
 </body>
 </html>
