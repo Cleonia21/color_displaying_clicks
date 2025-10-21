@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1">
+    <title>Traces</title>
+    <link rel="stylesheet" href="css/home.css">
+    <link rel="stylesheet" href="css/table.css">
+    <link rel="stylesheet" href="css/toast.css">
+    <link rel="stylesheet" href="css/mobaile.css">
+    <script src="js/home.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/toast.js"></script>
+    <script src="js/circle.js"></script>
+    <script src="js/researchResult.js"></script>
+
+    <link rel="apple-touch-icon" sizes="57x57" href="icons/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="icons/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="icons/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="icons/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="icons/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="icons/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="icons/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icons/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="icons/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="icons/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    
+    <style>
+        body {
+            background-color: #6f6f6f;
+            display: table;
+        }
+
+        p {
+            white-space: pre-wrap;
+        }
+
+        .TestParent {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            align-content: center;
+            justify-content: center;
+            overflow: auto;
+        }
+
+        .ResultParent {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            overflow: auto;
+            flex-direction: row;
+        }
+
+        .MilestoneResult {
+            min-width: 500px;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            overflow: auto;
+            flex-direction: column;
+        }
+
+        #circle {
+            width: 9cm;
+            height: 9cm;
+            -webkit-border-radius: 4.5cm;
+            -moz-border-radius: 4.5cm;
+            border-radius: 4.5cm;
+            border: 0.2cm solid #e2e2e2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0
+        }
+
+        /* Стили для истории клавиш */
+        .key-history {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 16px;
+            text-align: center;
+            min-height: 30px;
+            z-index: 1000;
+            border-top: 2px solid #e2e2e2;
+        }
+
+        .key-history span {
+            margin: 0 5px;
+            padding: 2px 8px;
+            background-color: #444;
+            border-radius: 4px;
+        }
+
+        .key-history .arrow-left {
+            color: #ff0000;
+        }
+
+        .key-history .arrow-right {
+            color: yellow;
+        }
+
+        @media (max-width:768px) {
+            #circle {
+                width: 90%;
+                height: 0;
+                padding-top: 90%;
+                border-radius: 50%;
+            }
+            
+            .key-history {
+                font-size: 14px;
+                padding: 8px;
+            }
+        }
+
+        @media (max-width:320px) {
+            #circle {
+                width: 90%;
+                height: 0;
+                padding-top: 90%;
+                border-radius: 50%;
+            }
+            
+            .key-history {
+                font-size: 12px;
+                padding: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <header>
+
+    </header>
+    <div id="parent" class="TestParent" oncontextmenu="return false;">
+        <div id="circle"></div>
+    </div>
+    
+    <!-- Строка с историей клавиш -->
+    <div id="keyHistory" class="key-history"></div>
+</div>
+
+<script>
+    
+        const circle = document.getElementById('circle');
+        const keyHistory = document.getElementById('keyHistory');
+        let keySequence = [];
+        const maxHistoryItems = 10; // Максимальное количество отображаемых клавиш
+
+        addEventListener('keydown', function(event) {
+            if (event.code === 'ArrowLeft') {
+                circle.style.background = '#ff0000';
+                addKeyToHistory('←', 'arrow-left');
+            } else if (event.code === 'ArrowRight') {
+                circle.style.background = 'yellow';
+                addKeyToHistory('→', 'arrow-right');
+            }
+        });
+
+        addEventListener('keyup', function(event) {
+            if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
+                circle.style.background = '#6f6f6f';
+            }
+        });
+        
+        function addKeyToHistory(keySymbol, className) {
+            // Добавляем новую клавишу в массив
+            keySequence.push({ symbol: keySymbol, class: className });
+            
+            // Ограничиваем длину истории
+            if (keySequence.length > maxHistoryItems) {
+                keySequence.shift(); // Удаляем самый старый элемент
+            }
+            
+            // Обновляем отображение
+            updateKeyHistoryDisplay();
+        }
+        
+        function updateKeyHistoryDisplay() {
+            // Очищаем контейнер
+            keyHistory.innerHTML = '';
+            
+            // Добавляем все клавиши из истории
+            keySequence.forEach(key => {
+                const keyElement = document.createElement('span');
+                keyElement.textContent = key.symbol;
+                keyElement.className = key.class;
+                keyHistory.appendChild(keyElement);
+            });
+            
+            // Если история пуста, показываем сообщение
+            if (keySequence.length === 0) {
+                keyHistory.textContent = 'Нажмите стрелки ← или →';
+            }
+        }
+        
+        // Инициализируем отображение
+        updateKeyHistoryDisplay();
+ 
+</script>
+</body>
+</html>
